@@ -1,21 +1,19 @@
 #include <stdio.h>
 
-int main()
-{
+int main() {
     int a = 0;
     int b = 0;
-    printf("введите число ");
+    printf("Введите число: ");
     scanf("%d", &a); 
-    printf("введите число, на которые вы хотите изменить 3й байт ");
+    printf("Введите число, на которое вы хотите изменить третий байт: ");
     scanf("%d", &b);
-    char* ptr;
     
-    ptr = &a ;
+    unsigned char* ptr = (unsigned char*)&a;
     ptr += 2;
     
-   
-    *ptr = b; 
+    *ptr = (unsigned char)b;
     
-    printf("%d", a); 
+    printf("%d\n", a);
     
+    return 0;
 }

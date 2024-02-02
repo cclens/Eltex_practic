@@ -12,5 +12,7 @@
 
 ![image](https://github.com/cclens/Eltex_practic/assets/117731232/4784a3da-56c8-4e8c-bfeb-b7b69994ef8a)
 ![image](https://github.com/cclens/Eltex_practic/assets/117731232/94233448-b54c-4e5c-86d5-e59aa4e060fb)
-5)run-им < file.txt, и всё готово
+
+6)run-им < file.txt, и всё готово
+
 ![image](https://github.com/cclens/Eltex_practic/assets/117731232/c4945bd6-ac29-4af6-aecd-5b2561e3c842)

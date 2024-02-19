@@ -114,5 +114,7 @@ int main() {
                 continue;
                 break;
         }
+        // Освобождение памяти
+    free(arr);
     }
 }

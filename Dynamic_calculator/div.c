@@ -3,7 +3,7 @@
 void division(float** buffer){
       float* tmp = (float*)malloc(sizeof(float));
       printf("%s\n", "введите число на которое хотите разделить");
-      scanf("%f", tmp);
+      scanf("%10f", tmp);
       if (tmp == NULL){
           printf("ошибка выделения памяти\n");
           return;

@@ -7,7 +7,7 @@ int main()
     int choice = 0;
     while (choice != 5){
         printf("%s\n", "выберите \n) Сложение\n) Вычитание\n) Умножение\n) Деление\n) Выход" );
-        int sucessfulInput = scanf ("%d", &choice);
+        int sucessfulInput = scanf ("%5d", &choice);
 
         if (sucessfulInput == 1){
         switch(choice){

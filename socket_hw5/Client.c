@@ -61,7 +61,6 @@ int main() {
 
     char *data_point = packet + sizeof(struct udphdr) + sizeof(struct iphdr);
     strcpy(data_point, data);
- //    memcpy(data_point, data, data_len); // Копируем данные в пакет
     if (sendto(client_socket, packet, sizeof(packet), 0, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
         perror("sendto");
         exit(EXIT_FAILURE);
@@ -77,11 +76,7 @@ int main() {
 
 		char *received_header = buffer;
 		struct udphdr *received_udp_header = ((struct udphdr*)(received_header + 20));
-/*
-		printf("%s %02X \n","tut ", received_udp_header->source);
-		printf("%s %02X \n","tut ", received_udp_header->dest);
-		printf("%s %02X \n","tut ", received_udp_header->len);
-*/	
+
 		uint16_t source_port = htons(received_udp_header->source);
         uint16_t dest_port = htons(received_udp_header->dest);
 		int dest_port_int = (int)dest_port;

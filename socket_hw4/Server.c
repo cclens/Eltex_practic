@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <sys/un.h>
 #include <sys/socket.h>
-#include <netinet/in.h> // Для структуры sockaddr_in
+#include <netinet/in.h> 
 #include <arpa/inet.h>
 #include <netinet/udp.h>
 

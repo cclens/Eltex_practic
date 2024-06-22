@@ -10,6 +10,7 @@
 #include <net/if.h>
 #include <unistd.h>
 #include <linux/if_packet.h>
+
 #define PORT 8888
 
 uint16_t checksum(uint16_t *buffer, int length) {
@@ -29,7 +30,7 @@ uint16_t checksum(uint16_t *buffer, int length) {
 
 int main() {
     char ip_addr[] = "127.0.0.5";
-    char mac_addr[] = "0A-00-27-00-00-0F";
+    char mac_addr[] = "0A:00:27:00:00:0F"; // Указанный MAC-адрес
     char data[] = "hello server";
     int data_len = strlen(data);
 
@@ -45,6 +46,12 @@ int main() {
     server_addr.sll_protocol = htons(ETH_P_ALL);
     server_addr.sll_ifindex = if_nametoindex("lo");
     server_addr.sll_halen = ETH_ALEN;
+
+    // Разбор MAC-адреса и копирование в структуру server_addr
+    sscanf(mac_addr, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
+           &server_addr.sll_addr[0], &server_addr.sll_addr[1],
+           &server_addr.sll_addr[2], &server_addr.sll_addr[3],
+           &server_addr.sll_addr[4], &server_addr.sll_addr[5]);
 
     char packet[sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) + data_len];
 
@@ -103,4 +110,3 @@ int main() {
     close(client_socket);
     return 0;
 }
-

@@ -45,10 +45,6 @@ int main() {
     server_addr.sll_protocol = htons(ETH_P_ALL);
     server_addr.sll_ifindex = if_nametoindex("lo");
     server_addr.sll_halen = ETH_ALEN;
-    sscanf(mac_addr, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-           &server_addr.sll_addr[0], &server_addr.sll_addr[1],
-           &server_addr.sll_addr[2], &server_addr.sll_addr[3],
-           &server_addr.sll_addr[4], &server_addr.sll_addr[5]);
 
     char packet[sizeof(struct ethhdr) + sizeof(struct iphdr) + sizeof(struct udphdr) + data_len];
 

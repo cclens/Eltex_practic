@@ -29,7 +29,7 @@ uint16_t checksum(uint16_t *buffer, int length) {
 
 int main() {
     char ip_addr[] = "127.0.0.5";
-    char mac_addr[] = "ff:ff:ff:ff:ff:ff";
+    char mac_addr[] = "0A-00-27-00-00-0F";
     char data[] = "hello server";
     int data_len = strlen(data);
 

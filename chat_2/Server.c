@@ -52,7 +52,6 @@ int main() {
     printf("Server started. Shared memory ID: %d, Semaphore ID: %d\n", shmid, semid);
 
     while (1) {
-        // Server loop doing nothing, shared memory and semaphores are used by clients
         sleep(1);
     }
 

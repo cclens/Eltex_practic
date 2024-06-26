@@ -45,7 +45,7 @@ void *receive_messages(void *arg) {
             last_num_messages = shm->num_messages;
         }
         sem_signal(semid);
-        usleep(100000);  // Sleep for 0.1 seconds
+        sleep(0.1);  
     }
     pthread_exit(NULL);
 }

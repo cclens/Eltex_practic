@@ -18,21 +18,18 @@ int main() {
     int msg_id;
     struct msg_buffer msg;
 
-    // Генерируем ключ для очереди сообщений
     key = ftok("/tmp", QUEUE_KEY);
     if (key == -1) {
         perror("ftok");
         exit(1);
     }
 
-    // Создаем очередь сообщений
     msg_id = msgget(key, IPC_CREAT | 0666);
     if (msg_id == -1) {
         perror("msgget");
         exit(1);
     }
 
-    // Получаем сообщение от клиента
     if (msgrcv(msg_id, &msg, sizeof(msg.msg_text), 1, 0) == -1) {
         perror("msgrcv");
         exit(1);
@@ -40,7 +37,6 @@ int main() {
 
     printf("Сервер получил сообщение: %s\n", msg.msg_text);
 
-    // Отправляем ответ клиенту
     strcpy(msg.msg_text, "Hello!");
     msg.msg_type = 2;
     if (msgsnd(msg_id, &msg, sizeof(msg.msg_text), 0) == -1) {
@@ -48,7 +44,6 @@ int main() {
         exit(1);
     }
 
-    // Удаляем очередь сообщений
     if (msgctl(msg_id, IPC_RMID, NULL) == -1) {
         perror("msgctl");
         exit(1);

@@ -13,47 +13,39 @@ int main() {
     key_t key;
     char *shm, *msg;
     
-    // Генерируем ключ для сегмента разделяемой памяти
     key = ftok(".", 'S');
     if (key == -1) {
         perror("ftok");
         exit(1);
     }
     
-    // Создаем сегмент разделяемой памяти
     shmid = shmget(key, SHM_SIZE, IPC_CREAT | 0666);
     if (shmid == -1) {
         perror("shmget");
         exit(1);
     }
     
-    // Подключаемся к сегменту разделяемой памяти
     shm = shmat(shmid, NULL, 0);
     if (shm == (char *) -1) {
         perror("shmat");
         exit(1);
     }
     
-    // Записываем сообщение в сегмент разделяемой памяти
     msg = "Hi!";
     strncpy(shm, msg, SHM_SIZE);
     
     printf("Server sent: %s\n", shm);
     
-    // Ждем ответа от клиента
     printf("Waiting for client's response...\n");
-    sleep(5);  // Подождем 5 секунд для демонстрации
+    sleep(5);  
     
-    // Читаем ответ от клиента из сегмента разделяемой памяти
     printf("Server received: %s\n", shm);
     
-    // Отключаемся от сегмента разделяемой памяти
     if (shmdt(shm) == -1) {
         perror("shmdt");
         exit(1);
     }
     
-    // Удаляем сегмент разделяемой памяти
     if (shmctl(shmid, IPC_RMID, NULL) == -1) {
         perror("shmctl");
         exit(1);

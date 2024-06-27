@@ -18,21 +18,18 @@ int main() {
     int msg_id;
     struct msg_buffer msg;
 
-    // Генерируем ключ для очереди сообщений
     key = ftok("/tmp", QUEUE_KEY);
     if (key == -1) {
         perror("ftok");
         exit(1);
     }
 
-    // Получаем доступ к очереди сообщений
     msg_id = msgget(key, 0666);
     if (msg_id == -1) {
         perror("msgget");
         exit(1);
     }
 
-    // Отправляем сообщение серверу
     msg.msg_type = 1;
     strcpy(msg.msg_text, "Hi!");
     if (msgsnd(msg_id, &msg, sizeof(msg.msg_text), 0) == -1) {
@@ -40,7 +37,6 @@ int main() {
         exit(1);
     }
 
-    // Получаем ответ от сервера
     if (msgrcv(msg_id, &msg, sizeof(msg.msg_text), 2, 0) == -1) {
         perror("msgrcv");
         exit(1);

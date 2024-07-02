@@ -1,117 +1,178 @@
-#include <ncurses.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <pthread.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
-#include <sys/types.h>
+#include <locale.h>
+#include <ncursesw/ncurses.h>
 #include <unistd.h>
+#include <string.h>
+#include <mqueue.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <stdio.h>
 
-#define MAX_TEXT 512
-#define SERVER_QUEUE_KEY 1234
-#define NUM_CLIENTS 3  // Количество клиентов задается здесь
+struct mq_attr attr;
 
-struct message {
-    long msg_type;
-    char text[MAX_TEXT];
-};
+mqd_t mq_in;
+mqd_t mq_out;
+mqd_t mq_adm_in;
+mqd_t mq_adm_out;
+mqd_t mq_list_in;
+mqd_t mq_list_out;
 
-int msgid;
-char username[50];
-WINDOW *chatwin, *inputwin, *userwin;
+pthread_t thread_in;
+pthread_t thread_out;
+pthread_t thread_adm;
+pthread_t thread_list;
 
-void *receive_messages(void *arg) {
-    struct message msg;
+char buffer[1024];
+char name[30];
+char sub_name[30];
+
+WINDOW *chat_window;
+WINDOW *input_window;
+WINDOW *users_window;
+
+void check_mq_open(mqd_t mq, const char* mq_name) {
+    if (mq == (mqd_t)-1) {
+        perror(mq_name);
+        exit(EXIT_FAILURE);
+    }
+}
+
+void* User_adm(void* arg) {
+    mq_send(mq_adm_in, name, strlen(name) + 1, 0);
+    mq_receive(mq_adm_out, name, sizeof(name), NULL);
+    return NULL;
+}
+
+void* List_count(void* arg) {
+    while(1) {
+        ssize_t bytes_read = mq_receive(mq_list_in, sub_name, sizeof(sub_name), NULL);
+        if (bytes_read >= 0) {
+            sub_name[bytes_read] = '\0'; // Null-terminate the string
+            werase(users_window);
+            box(users_window, 0, 0);
+            mvwprintw(users_window, 1, 1, "Users:");
+            wprintw(users_window, "%s\n", sub_name);
+            wrefresh(users_window);
+        }
+        usleep(300000); // Используем usleep вместо sleep для более точного управления временем
+    }
+    return NULL;
+}
+
+void* Output_chat(void* arg) {
+    while(1) {
+        ssize_t bytes_read = mq_receive(mq_out, buffer, sizeof(buffer), NULL);
+        if (bytes_read >= 0) {
+            buffer[bytes_read] = '\0'; // Null-terminate the string
+            wprintw(chat_window, "%s\n", buffer);
+            wrefresh(chat_window);
+            // Отладочное сообщение
+            printf("Received message: %s\n", buffer);
+            fflush(stdout); // Чтобы отладочное сообщение сразу выводилось на экран
+        } else {
+            perror("mq_receive in Output_chat");
+        }
+    }
+    return NULL;
+}
+
+void* Input_chat(void* arg) {
+    char message[1024];
+    sprintf(message, "%s присоединился к сессии", name); 
+    mq_send(mq_in, message, strlen(message) + 1, 0);
     while (1) {
-        if (msgrcv(msgid, (void *)&msg, sizeof(msg.text), 0, 0) == -1) {
-            perror("msgrcv failed");
-            break;
+        wgetstr(input_window, buffer);
+        werase(input_window);
+        box(input_window, 0, 0);
+        wrefresh(input_window);
+        if (strcmp(buffer, "exit") == 0) {
+            mq_send(mq_adm_in, "exit", strlen("exit") + 1, 0);
+            sleep(1);
+            endwin(); // Завершаем ncurses перед выходом
+            exit(0);
         }
-        wprintw(chatwin, "%s\n", msg.text);
-        wrefresh(chatwin);
+        sprintf(message, "%s: %s", name, buffer);
+        mq_send(mq_in, message, strlen(message) + 1, 0);
     }
-    pthread_exit(NULL);
+    return NULL;
 }
 
-void send_message(const char *text) {
-    struct message msg;
-    msg.msg_type = 1;
-    snprintf(msg.text, MAX_TEXT, "%s: %s", username, text);
-    
-    // Отправляем сообщение NUM_CLIENTS раз
-    for (int i = 0; i < NUM_CLIENTS; ++i) {
-        if (msgsnd(msgid, (void *)&msg, sizeof(msg.text), 0) == -1) {
-            perror("msgsnd failed");
-            exit(EXIT_FAILURE);
-        }
-    }
-}
+void create_windows(int chat_win_height, int users_win_width, int input_win_height) {
+    chat_window = newwin(chat_win_height, COLS - users_win_width, 0, 0);
+    users_window = newwin(chat_win_height, users_win_width, 0, COLS - users_win_width);
+    input_window = newwin(input_win_height, COLS, chat_win_height, 0);
 
-void update_user_list() {
-    werase(userwin);
-    box(userwin, 0, 0);
-    mvwprintw(userwin, 1, 1, "Connected users:");
-    // Пока добавляем только одного пользователя
-    mvwprintw(userwin, 2, 1, "%s", username);
-    wrefresh(userwin);
+    scrollok(chat_window, TRUE);
+    box(chat_window, 0, 0);
+    box(users_window, 0, 0);
+    box(input_window, 0, 0);
+
+    mvwprintw(chat_window, 0, 1, " Chat ");
+    mvwprintw(users_window, 0, 1, " Users ");
+    mvwprintw(input_window, 0, 1, " Input ");
+
+    wrefresh(chat_window);
+    wrefresh(users_window);
+    wrefresh(input_window);
 }
 
 int main() {
-    pthread_t recv_thread;
-    char input[MAX_TEXT];
-    key_t key = SERVER_QUEUE_KEY;
+    attr.mq_flags = 0;        // no flags
+    attr.mq_maxmsg = 10;      // maximum number of messages
+    attr.mq_msgsize = 1024;   // maximum message size
+    attr.mq_curmsgs = 0;      // number of messages currently queued
 
-    msgid = msgget(key, 0666);
-    if (msgid == -1) {
-        perror("msgget failed");
-        exit(EXIT_FAILURE);
-    }
+    mq_in = mq_open("/flag.txt1", O_CREAT | O_RDWR, 0666, &attr);
+    check_mq_open(mq_in, "mq_in");
+    mq_out = mq_open("/flag.txt2", O_CREAT | O_RDWR, 0666, &attr);
+    check_mq_open(mq_out, "mq_out");
+    mq_adm_in = mq_open("/flag.txt3", O_CREAT | O_RDWR, 0666, &attr);
+    check_mq_open(mq_adm_in, "mq_adm_in");
+    mq_adm_out = mq_open("/flag.txt4", O_CREAT | O_RDWR, 0666, &attr);
+    check_mq_open(mq_adm_out, "mq_adm_out");
+    mq_list_in = mq_open("/flag.txt5", O_CREAT | O_RDWR, 0666, &attr);
+    check_mq_open(mq_list_in, "mq_list_in");
+    mq_list_out = mq_open("/flag.txt6", O_CREAT | O_RDWR, 0666, &attr);
+    check_mq_open(mq_list_out, "mq_list_out");
 
-    printf("Enter your username: ");
-    scanf("%s", username);
+    setlocale(LC_ALL, "");
 
     initscr();
-    cbreak();
-    noecho();
+    clear();
+    start_color();
+    init_pair(1, COLOR_CYAN, COLOR_BLACK);
+    init_pair(2, COLOR_BLACK, COLOR_WHITE);
+    init_pair(3, COLOR_WHITE, COLOR_BLACK);
 
-    int height, width;
-    getmaxyx(stdscr, height, width);
+    attron(COLOR_PAIR(2));
+    attron(A_BOLD);
+    printw("Введите свой никнейм: ");
+    attroff(A_BOLD);
+    getstr(name);
+    attroff(COLOR_PAIR(2));
 
-    chatwin = newwin(height - 3, width - 20, 0, 0);
-    inputwin = newwin(3, width - 20, height - 3, 0);
-    userwin = newwin(height, 20, 0, width - 20);
+    int chat_win_height = LINES - 4;
+    int users_win_width = COLS / 4;
+    int input_win_height = 3;
 
-    scrollok(chatwin, TRUE);
-    box(chatwin, 0, 0);
-    box(inputwin, 0, 0);
-    box(userwin, 0, 0);
+    create_windows(chat_win_height, users_win_width, input_win_height);
 
-    mvwprintw(inputwin, 1, 1, "> ");
-    wrefresh(chatwin);
-    wrefresh(inputwin);
-    wrefresh(userwin);
+    pthread_create(&thread_in, NULL, Input_chat, NULL);
+    pthread_create(&thread_out, NULL, Output_chat, NULL);
+    pthread_create(&thread_adm, NULL, User_adm, NULL);
+    pthread_create(&thread_list, NULL, List_count, NULL);
 
-    update_user_list();
+    pthread_join(thread_in, NULL);
+    pthread_join(thread_out, NULL);
+    pthread_join(thread_adm, NULL);
+    pthread_join(thread_list, NULL);
 
-    if (pthread_create(&recv_thread, NULL, receive_messages, NULL) != 0) {
-        perror("pthread_create failed");
-        exit(EXIT_FAILURE);
-    }
-
-    while (1) {
-        werase(inputwin);
-        box(inputwin, 0, 0);
-        mvwprintw(inputwin, 1, 1, "> ");
-        wrefresh(inputwin);
-        // Включаем echo для отображения ввода
-        echo();
-        wgetnstr(inputwin, input, MAX_TEXT - 1);
-        noecho();  // Отключаем echo после ввода
-        send_message(input);
-    }
-
+    mq_close(mq_adm_in);
+    mq_close(mq_adm_out);
+    mq_close(mq_in);
+    mq_close(mq_out);
+    mq_close(mq_list_in);
+    mq_close(mq_list_out);
     endwin();
     return 0;
 }
-

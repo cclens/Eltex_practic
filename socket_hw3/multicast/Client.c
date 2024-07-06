@@ -30,15 +30,14 @@ int main() {
 	}
 	
 	mreq.imr_multiaddr.s_addr = inet_addr(MULTICAST_GROUP);
-    mreq.imr_interface.s_addr = htonl(INADDR_ANY);
+    	mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 	
 	if (setsockopt(client_socket, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0) {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
-    }	
+        	perror("setsockopt");
+        	exit(EXIT_FAILURE);
+    	}	
 
 	while(1){
-	
 		char buffer[64];
 		int bytes_recived = recvfrom(client_socket, buffer, sizeof(buffer), 0, (struct sockaddr*)&server_addr, &server_addr_len) < 0;
 		if (bytes_recived < 0){
@@ -46,8 +45,8 @@ int main() {
 			exit(EXIT_FAILURE);
 		}
 	
-		printf("%s\n", buffer);		
-
+		printf("%s\n", buffer);	
+		
 		close(client_socket);
 		exit(EXIT_SUCCESS);
 	}
